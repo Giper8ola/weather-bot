@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
+import { TelegramModule } from './telegram/telegram.module';
 
 @Module({
-    imports: []
+    imports: [TelegramModule]
 })
 export class AppModule {}
