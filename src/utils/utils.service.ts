@@ -55,9 +55,19 @@ export class UtilsService {
         try {
             await page.exposeFunction('parseString', this.parseString);
 
-            await page.goto(`https://pogoda.mail.ru/prognoz/${town}/`, {
-                waitUntil: 'networkidle2'
-            });
+            const res = await page.goto(
+                `https://pogoda.mail.ru/prognoz/${town}/`,
+                {
+                    waitUntil: 'networkidle2'
+                }
+            );
+
+            if (res.status() === 404) {
+                await ctx.reply(
+                    'Допущена ошибка в указании города, попробуйте ввести название города еще раз'
+                );
+                return;
+            }
 
             await page.setViewport({ width: 1920, height: 1080 });
 
