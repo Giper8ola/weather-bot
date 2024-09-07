@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { transliterationMap } from '../core/constants';
-import { Context } from 'telegraf';
 import puppeteer from 'puppeteer';
+import { Context } from '../telegram/context.interface';
 
 @Injectable()
 export class UtilsService {
@@ -153,6 +153,7 @@ export class UtilsService {
                         )
                         .join('')}`
             );
+            ctx.session.type = null;
         } catch (e) {
             throw new BadRequestException({
                 message:
