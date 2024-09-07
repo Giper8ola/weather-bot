@@ -78,7 +78,6 @@ export const getWeather = async (ctx: Context, town: string) => {
         return returnedObject;
     });
     await browser.close();
-
     await ctx.replyWithHTML(
         `<b>Текущий день:</b>\n\n` +
             `${data.today.about}\n` +
