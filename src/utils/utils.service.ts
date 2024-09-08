@@ -1,10 +1,25 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { transliterationMap } from '../core/constants';
 import puppeteer from 'puppeteer';
 import { Context } from '../telegram/context.interface';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+
+type returnObj = {
+    today: {
+        about: string;
+        now: {
+            temp: string;
+        };
+        periods: [];
+    };
+    after: [];
+};
 
 @Injectable()
 export class UtilsService {
+    constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
+
     transliterate(text) {
         return text
             .toLowerCase()
@@ -21,7 +36,6 @@ export class UtilsService {
     }
 
     toFahrenheit(str: string): string {
-        console.log(str);
         const [start, end] = [str.split('')[0], str.split('').at(-1)];
         const numberFah = (Number(str.match(/\d+/g)[0]) * 9) / 5 + 32;
         return `${start}${numberFah}${end}`;
@@ -62,9 +76,13 @@ export class UtilsService {
             headless: true,
             defaultViewport: null
         });
-        console.log(temp);
         const page = await browser.newPage();
         try {
+            let data;
+            if (await this.cacheManager.get(town)) {
+                data = await this.cacheManager.get<returnObj>(town);
+            }
+
             await page.exposeFunction('parseString', this.parseString);
 
             const res = await page.goto(
@@ -83,69 +101,82 @@ export class UtilsService {
 
             await page.setViewport({ width: 1920, height: 1080 });
 
-            const data = await page.evaluate(async () => {
-                const returnedObject = {
-                    today: {
-                        about: '',
-                        now: {
-                            temp: ''
+            // Экстра костыли
+            if (!(await this.cacheManager.get(town))) {
+                console.log('d');
+                data = await page.evaluate(async () => {
+                    const returnedObject = {
+                        today: {
+                            about: '',
+                            now: {
+                                temp: ''
+                            },
+                            periods: []
                         },
-                        periods: []
-                    },
-                    after: []
-                };
-
-                const about = document.querySelector(
-                    'div.information__header__left__date'
-                );
-                const nowTemp = document.querySelector(
-                    'div.information__content__temperature'
-                );
-
-                const nowPeriods = document.querySelectorAll(
-                    'div.information__content__period'
-                );
-
-                const afterPeriods = document.querySelectorAll('a.day__link');
-
-                returnedObject.today.about = await this.parseString(
-                    about.textContent
-                );
-                returnedObject.today.now.temp = await this.parseString(
-                    nowTemp.textContent
-                );
-
-                for (let i = 0; i < nowPeriods.length; i++) {
-                    const arr = [];
-                    for (let j = 0; j <= 2; j++) {
-                        if (j === 1)
-                            arr.push(
-                                nowPeriods[i].children[j].getAttribute('title')
-                            );
-                        else arr.push(nowPeriods[i].children[j].textContent);
-                    }
-                    returnedObject.today.periods.push(arr.join(' '));
-                }
-
-                for (let i = 0; i < afterPeriods.length; i++) {
-                    const obj = {
-                        dayByPeriod: afterPeriods[i].children[0].textContent,
-                        state: afterPeriods[i].children[3].getAttribute(
-                            'title'
-                        ),
-                        day: afterPeriods[i].children[2].textContent
-                            .split('')
-                            .splice(0, 4)
-                            .join(''),
-                        night: afterPeriods[i].children[2].children[0]
-                            .textContent
+                        after: []
                     };
 
-                    returnedObject.after.push(obj);
-                }
+                    const about = document.querySelector(
+                        'div.information__header__left__date'
+                    );
+                    const nowTemp = document.querySelector(
+                        'div.information__content__temperature'
+                    );
 
-                return returnedObject;
-            });
+                    const nowPeriods = document.querySelectorAll(
+                        'div.information__content__period'
+                    );
+
+                    const afterPeriods =
+                        document.querySelectorAll('a.day__link');
+
+                    returnedObject.today.about = await this.parseString(
+                        about.textContent
+                    );
+                    returnedObject.today.now.temp = await this.parseString(
+                        nowTemp.textContent
+                    );
+
+                    for (let i = 0; i < nowPeriods.length; i++) {
+                        const arr = [];
+                        for (let j = 0; j <= 2; j++) {
+                            if (j === 1)
+                                arr.push(
+                                    nowPeriods[i].children[j].getAttribute(
+                                        'title'
+                                    )
+                                );
+                            else
+                                arr.push(nowPeriods[i].children[j].textContent);
+                        }
+                        returnedObject.today.periods.push(arr.join(' '));
+                    }
+
+                    for (let i = 0; i < afterPeriods.length; i++) {
+                        const obj = {
+                            dayByPeriod:
+                                afterPeriods[i].children[0].textContent,
+                            state: afterPeriods[i].children[3].getAttribute(
+                                'title'
+                            ),
+                            day: afterPeriods[i].children[2].textContent
+                                .split('')
+                                .splice(0, 4)
+                                .join(''),
+                            night: afterPeriods[i].children[2].children[0]
+                                .textContent
+                        };
+
+                        returnedObject.after.push(obj);
+                    }
+                    return returnedObject;
+                });
+            }
+
+            if (!(await this.cacheManager.get(town))) {
+                await this.cacheManager.set(town, data, 1000 * 2 * 60);
+            }
+
             await ctx.replyWithHTML(
                 `<b>Текущий день:</b>\n\n` +
                     `${data.today.about}\n` +
