@@ -103,7 +103,6 @@ export class UtilsService {
 
             // Экстра костыли
             if (!(await this.cacheManager.get(town))) {
-                console.log('d');
                 data = await page.evaluate(async () => {
                     const returnedObject = {
                         today: {
