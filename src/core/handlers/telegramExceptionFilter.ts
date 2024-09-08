@@ -12,8 +12,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
     catch(exception: BadRequestException) {
         const status = exception.getStatus();
         const exceptionResponse = exception.getResponse();
-
-        // Логируем информацию об исключении
         this.logger.error(`HTTP Exception thrown:
       Status: ${status},
       Response: ${JSON.stringify(exceptionResponse)}`);
