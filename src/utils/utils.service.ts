@@ -20,6 +20,13 @@ export class UtilsService {
             .join('');
     }
 
+    toFahrenheit(str: string): string {
+        console.log(str);
+        const [start, end] = [str.split('')[0], str.split('').at(-1)];
+        const numberFah = (Number(str.match(/\d+/g)[0]) * 9) / 5 + 32;
+        return `${start}${numberFah}${end}`;
+    }
+
     getTranslatedCity(str: string) {
         const transliteratedCity = this.transliterate(str);
         return transliteratedCity.replace(/\s+/g, '_');
@@ -55,6 +62,7 @@ export class UtilsService {
             headless: true,
             defaultViewport: null
         });
+        console.log(temp);
         const page = await browser.newPage();
         try {
             await page.exposeFunction('parseString', this.parseString);
@@ -142,9 +150,19 @@ export class UtilsService {
                 `<b>Текущий день:</b>\n\n` +
                     `${data.today.about}\n` +
                     `<b>температура сейчас:  </b>` +
-                    `${data.today.now.temp}\n` +
-                    `${data.today.periods[0]}\n` +
-                    `${data.today.periods[1]}\n\n`
+                    `${temp === 'celsius' ? data.today.now.temp : this.toFahrenheit(data.today.now.temp)}\n` +
+                    `${data.today.periods
+                        .map((period) =>
+                            period
+                                .split(' ')
+                                .map((str, ind) =>
+                                    ind === str.length - 1
+                                        ? `${temp === 'celsius' ? str : this.toFahrenheit(str)}\n`
+                                        : `${str}`
+                                )
+                                .join(' ')
+                        )
+                        .join('')}`
             );
             await ctx.replyWithHTML(
                 `<b>Последующие дни:</b>\n\n` +
@@ -152,16 +170,15 @@ export class UtilsService {
                         .map(
                             (el) =>
                                 `<b>${el.dayByPeriod}:  </b>${el.state}\n` +
-                                `<b>Температура днем:  </b>${el.day}\n` +
-                                `<b>Температура ночью:  </b>${el.night}\n\n`
+                                `<b>Температура днем:  </b>${temp === 'celsius' ? el.day : this.toFahrenheit(el.day)}\n` +
+                                `<b>Температура ночью:  </b>${temp === 'celsius' ? el.night : this.toFahrenheit(el.night)}\n\n`
                         )
                         .join('')}`
             );
             ctx.session.type = temp;
         } catch (e) {
             throw new BadRequestException({
-                message:
-                    'Произошла ошибка при получении данных, попробуйте еще раз'
+                message: `Произошла ошибка при получении данных, попробуйте еще раз, ${e}`
             });
         } finally {
             await browser.close();
