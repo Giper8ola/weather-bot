@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { transliterationMap } from '../core/constants';
 import puppeteer from 'puppeteer';
 import { Context } from '../telegram/context.interface';
@@ -18,6 +18,7 @@ type returnObj = {
 
 @Injectable()
 export class UtilsService {
+    private readonly logger = new Logger(UtilsService.name);
     constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
 
     transliterate(text) {
@@ -55,9 +56,9 @@ export class UtilsService {
             await ctx.reply(
                 'Произошла ошибка при получении вашего местоположения, попробуйте еще раз'
             );
-            throw new BadRequestException({
-                message: '${response.json()}'
-            });
+            this.logger.error(
+                `${await response.json()}, funk: getCityFromCoordinates`
+            );
         }
         const data = await response.json();
 
@@ -207,15 +208,14 @@ export class UtilsService {
                         )
                         .join('')}`
             );
+            ctx.session.type = temp;
         } catch (e) {
+            ctx.session.type = temp;
             await ctx.reply(
                 'Произошла ошибка при получении данных, попробуйте еще раз'
             );
-            throw new BadRequestException({
-                message: `${e}`
-            });
+            this.logger.error(`${e}, funk: getWeather`);
         } finally {
-            ctx.session.type = temp;
             await browser.close();
         }
     }
