@@ -1,7 +1,15 @@
-import { Ctx, Hears, Message, On, Start, Update } from 'nestjs-telegraf';
+import {
+    Action,
+    Ctx,
+    Hears,
+    Message,
+    On,
+    Start,
+    Update
+} from 'nestjs-telegraf';
 import { Telegram } from 'telegraf';
 import { ConfigService } from '@nestjs/config';
-import { actionButtons } from './buttons/telegram-buttons';
+import { actionButtons, inlineButtons } from './buttons/telegram-buttons';
 import { UtilsService } from '../utils/utils.service';
 import { Context } from './context.interface';
 
@@ -41,13 +49,32 @@ export class TelegramService extends Telegram {
     }
 
     @Hears('Выбор города')
-    async hears(@Ctx() ctx: Context) {
+    async hearsCity(@Ctx() ctx: Context) {
         await ctx.reply(
             'Напишите город, в котором хотите узнать прогноз погоды'
         );
         if (ctx.session.type === 'celsius') ctx.session.type = `city/celsius`;
         if (ctx.session.type === 'fahrenheit')
             ctx.session.type = `city/fahrenheit`;
+    }
+
+    @Hears('Выбор единицы измерения')
+    async hearsMeasuring(@Ctx() ctx: Context) {
+        await ctx.reply('Выберите единицу измерения', inlineButtons());
+    }
+
+    @Action('changeCelsius')
+    async changeCelsius(@Ctx() ctx: Context) {
+        ctx.session.type = 'celsius';
+        await ctx.reply('Установлено отображению температуры по цельсию');
+        return;
+    }
+
+    @Action('changeFahrenheit')
+    async changeFahrenheit(@Ctx() ctx: Context) {
+        ctx.session.type = 'fahrenheit';
+        await ctx.reply('Установлено отображению температуры по фаренгейту');
+        return;
     }
 
     @On('text')
