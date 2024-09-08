@@ -38,7 +38,8 @@ export class TelegramService extends Telegram {
         const { latitude, longitude } = ctx.message.location;
         const city = await this.utilsService.getCityFromCoordinates(
             latitude,
-            longitude
+            longitude,
+            ctx
         );
         const validCity = this.utilsService.getTranslatedCity(city);
         await this.utilsService.getWeather(

@@ -46,15 +46,17 @@ export class UtilsService {
         return transliteratedCity.replace(/\s+/g, '_');
     }
 
-    async getCityFromCoordinates(latitude: any, longitude: any) {
+    async getCityFromCoordinates(latitude: any, longitude: any, ctx: Context) {
         const apiKey = process.env.GEOCODE_API_KEY;
         const url = `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${apiKey}`;
 
         const response = await fetch(url);
         if (!response.ok) {
+            await ctx.reply(
+                'Произошла ошибка при получении вашего местоположения, попробуйте еще раз'
+            );
             throw new BadRequestException({
-                message:
-                    'Произошла ошибка при получении вашего местоположения, попробуйте еще раз'
+                message: '${response.json()}'
             });
         }
         const data = await response.json();
@@ -205,12 +207,15 @@ export class UtilsService {
                         )
                         .join('')}`
             );
-            ctx.session.type = temp;
         } catch (e) {
+            await ctx.reply(
+                'Произошла ошибка при получении данных, попробуйте еще раз'
+            );
             throw new BadRequestException({
-                message: `Произошла ошибка при получении данных, попробуйте еще раз, ${e}`
+                message: `${e}`
             });
         } finally {
+            ctx.session.type = temp;
             await browser.close();
         }
     }
