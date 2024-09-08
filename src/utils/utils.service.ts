@@ -46,7 +46,11 @@ export class UtilsService {
         );
     }
 
-    async getWeather(ctx: Context, town: string) {
+    async getWeather(
+        ctx: Context,
+        town: string,
+        temp: 'celsius' | 'fahrenheit'
+    ) {
         const browser = await puppeteer.launch({
             headless: true,
             defaultViewport: null
@@ -153,7 +157,7 @@ export class UtilsService {
                         )
                         .join('')}`
             );
-            ctx.session.type = null;
+            ctx.session.type = temp;
         } catch (e) {
             throw new BadRequestException({
                 message:
